@@ -1,0 +1,2 @@
+# The assignment implementation uses only the Python standard library.
+# pytest is preinstalled in the official CSC458 VM and is used for testing.
