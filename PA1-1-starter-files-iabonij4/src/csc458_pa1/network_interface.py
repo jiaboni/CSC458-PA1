@@ -79,7 +79,33 @@ class NetworkInterface:
               packets that are waiting for that IP address.
         """
         # TODO 1: Part I
-        raise NotImplementedError
+
+        if next_hop_ip in self._arp_cache:
+            dest_mac = self._arp_cache[next_hop_ip].mac
+
+            frame = EthernetFrame(
+                dst=dest_mac,
+                src=self.ethernet_address,
+                ethertype=ETHERTYPE_IPV4,
+                payload=datagram.to_bytes()
+            )
+            self._outgoing.append(frame)
+        else:
+            request = ARPMessage.request(self.ethernet_address, self.ip_address, next_hop_ip)
+            arp_request_frame = EthernetFrame(
+                dst=ETHERNET_BROADCAST, 
+                src=self.ethernet_address,
+                ethertype=ETHERTYPE_ARP,
+                payload=request.to_bytes()
+            )
+            self._outgoing.append(arp_request_frame)
+            if next_hop_ip in self._pending:
+                self._pending[next_hop_ip].datagrams.append(datagram)
+            else:
+                new_pending = _PendingResolution(self._now_ms, [])
+                self._pending[next_hop_ip] = new_pending
+                self._pending[next_hop_ip].datagrams.append(datagram)
+
 
     def recv_frame(self, frame: EthernetFrame) -> IPv4Packet | None:
         """Process one incoming Ethernet frame.
@@ -115,7 +141,34 @@ class NetworkInterface:
               it in the ready-to-be-sent queue for outgoing frames.
         """
         # TODO 2: Part I
-        raise NotImplementedError
+        if frame.dst != self.ethernet_address and frame.dst != ETHERNET_BROADCAST:
+            return None
+        else:
+            if frame.ethertype == ETHERTYPE_IPV4:
+                try: 
+                    ip_packet = IPv4Packet.parse(frame.payload)
+                except: return None
+                return ip_packet
+            elif frame.ethertype == ETHERTYPE_ARP:
+                try:
+                    arp_message = ARPMessage.parse(frame.payload)
+                except: return None
+                sender_mac = arp_message.sender_mac
+                sender_ip = arp_message.sender_ip
+                self._arp_cache[sender_ip] = _CacheEntry(sender_mac, self._now_ms)
+                if sender_ip in self._pending:
+                    for datagram in self._pending[sender_ip].datagrams:
+                        self.send_datagram(datagram, sender_ip)
+                if arp_message.target_ip == self.ip_address and arp_message.opcode == ARP_REQUEST:
+                    reply = ARPMessage.reply(self.ethernet_address, self.ip_address, sender_mac, sender_ip)
+                    arp_reply_frame = EthernetFrame(
+                        dst=sender_mac,
+                        src=self.ethernet_address,
+                        ethertype=ETHERTYPE_ARP,
+                        payload=reply.to_bytes()
+                    )
+                    self._outgoing.append(arp_reply_frame)
+
 
     def maybe_send(self) -> EthernetFrame | None:
         """Return and remove the oldest frame awaiting transmission, if any.
