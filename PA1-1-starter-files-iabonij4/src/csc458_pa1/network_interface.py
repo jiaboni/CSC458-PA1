@@ -159,6 +159,7 @@ class NetworkInterface:
                 if sender_ip in self._pending:
                     for datagram in self._pending[sender_ip].datagrams:
                         self.send_datagram(datagram, sender_ip)
+                        self._pending[sender_ip].datagrams.remove(datagram)
                 if arp_message.target_ip == self.ip_address and arp_message.opcode == ARP_REQUEST:
                     reply = ARPMessage.reply(self.ethernet_address, self.ip_address, sender_mac, sender_ip)
                     arp_reply_frame = EthernetFrame(
