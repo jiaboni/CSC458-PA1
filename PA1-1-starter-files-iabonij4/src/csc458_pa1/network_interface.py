@@ -91,20 +91,22 @@ class NetworkInterface:
             )
             self._outgoing.append(frame)
         else:
-            request = ARPMessage.request(self.ethernet_address, self.ip_address, next_hop_ip)
-            arp_request_frame = EthernetFrame(
-                dst=ETHERNET_BROADCAST, 
-                src=self.ethernet_address,
-                ethertype=ETHERTYPE_ARP,
-                payload=request.to_bytes()
-            )
-            self._outgoing.append(arp_request_frame)
+
             if next_hop_ip in self._pending:
                 self._pending[next_hop_ip].datagrams.append(datagram)
             else:
                 new_pending = _PendingResolution(self._now_ms, [])
                 self._pending[next_hop_ip] = new_pending
                 self._pending[next_hop_ip].datagrams.append(datagram)
+                request = ARPMessage.request(self.ethernet_address, self.ip_address, next_hop_ip)
+                arp_request_frame = EthernetFrame(
+                dst=ETHERNET_BROADCAST, 
+                src=self.ethernet_address,
+                ethertype=ETHERTYPE_ARP,
+                payload=request.to_bytes()
+            )
+                self._outgoing.append(arp_request_frame)
+
 
 
     def recv_frame(self, frame: EthernetFrame) -> IPv4Packet | None:
@@ -220,11 +222,11 @@ class NetworkInterface:
         expired = []
 
         for ip, CacheEntry in self._arp_cache.items():
-            if self._now_ms - CacheEntry.learned_at_ms > ARP_CACHE_TTL_MS:
+            if self._now_ms - CacheEntry.learned_at_ms >= ARP_CACHE_TTL_MS:
                 expired.append(ip)
 
         for ip, PendingResolution in self._pending.items():
-            if self._now_ms - PendingResolution.started_at_ms > ARP_REQUEST_TTL_MS:
+            if self._now_ms - PendingResolution.started_at_ms >= ARP_REQUEST_TTL_MS:
                 expired.append(ip)
 
         for ip in expired:
