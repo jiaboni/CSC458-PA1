@@ -193,7 +193,9 @@ class NetworkInterface:
             about our IP addresses.
         """
         # TODO 3: Part I
-        raise NotImplementedError
+        if self._outgoing:
+            return self._outgoing.popleft()
+        return None
 
     def tick(self, ms_since_last_tick: int) -> None:
         """Advance time and expire stale ARP state.
@@ -214,4 +216,19 @@ class NetworkInterface:
               waiting for that IP address from the queue.
         """
         # TODO 4: Part I
-        raise NotImplementedError
+        self._now_ms += ms_since_last_tick
+        expired = []
+
+        for ip, CacheEntry in self._arp_cache.items():
+            if self._now_ms - CacheEntry.learned_at_ms > ARP_CACHE_TTL_MS:
+                expired.append(ip)
+
+        for ip, PendingResolution in self._pending.items():
+            if self._now_ms - PendingResolution.started_at_ms > ARP_REQUEST_TTL_MS:
+                expired.append(ip)
+
+        for ip in expired:
+            if ip in self._pending:
+                del self._pending[ip]
+            if ip in self._arp_cache:
+                del self._arp_cache[ip]
