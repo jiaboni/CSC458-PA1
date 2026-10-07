@@ -102,7 +102,23 @@ class Router:
             the optional next-hop address.
         """
         # TODO: Part II
-        raise NotImplementedError
+        if prefix_length < 0 or prefix_length > 32:
+            raise ValueError
+        try:
+            cidr = canonical_prefix(route_prefix, prefix_length)
+        except ValueError:
+            raise ValueError
+
+        try: #https://docs.python.org/3/library/ipaddress.html
+            next_hop = str(ipaddress.IPv4Address(next_hop))
+        except Exception:
+            raise ValueError
+
+        if interface_num < 0 or interface_num > len(self.interfaces):
+            raise IndexError
+
+        self._routes[cidr] = RouteEntry(cidr, next_hop, interface_num)
+
 
     def receive_datagram(self, interface_num: int, datagram: IPv4Packet) -> None:
         """Queue a datagram that arrived on a router interface.
@@ -160,7 +176,20 @@ class Router:
             packet with a lower TTL.
         """
         # TODO: Part II
-        raise NotImplementedError
+        
+        while self._incoming:
+            interface_num, datagram = self._incoming.popleft()
+            prefixes = longest_prefix_match(self._routes.keys(), datagram.dst)
+
+            if prefixes and datagram.ttl > 1:
+                #source: https://docs.python.org/3/library/dataclasses.html
+                new_datagram = replace(datagram, datagram.ttl - 1)
+                hop = datagram.dst
+                if self._routes[prefixes].next_hop:
+                    hop = self._routes[prefixes].next_hop
+                interface_list = self._routes[prefixes].interface_num
+                self.interfaces[interface_list].send_datagram(new_datagram, hop)
+
 
     @property
     def routes(self) -> tuple[RouteEntry, ...]:
