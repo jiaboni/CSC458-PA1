@@ -32,8 +32,12 @@ def canonical_prefix(cidr: str) -> str:
         You can use Python's standard-library ``ipaddress`` module.
     """
     # TODO: Part II.1
-    raise NotImplementedError
+    try:
+        canonical_prefix = ipaddress.IPv4Network(cidr, strict = False)
+    except:
+        raise ValueError
 
+    return str(canonical_prefix)
 
 def prefix_contains(cidr: str, ip: str) -> bool:
     """Return whether an IPv4 address belongs to a CIDR prefix.
@@ -66,7 +70,16 @@ def prefix_contains(cidr: str, ip: str) -> bool:
         ``in`` operator.
     """
     # TODO: Part II
-    raise NotImplementedError
+    try:
+        cidr_network = ipaddress.IPv4Network(canonical_prefix(cidr), strict = False)
+    except: 
+        raise ValueError
+    try:
+        ip_address = ipaddress.IPv4Address(ip)
+    except: 
+        raise ValueError
+    
+    return ip_address in cidr_network
 
 
 def prefix_length(cidr: str) -> int:
@@ -93,7 +106,13 @@ def prefix_length(cidr: str) -> int:
         You can use Python's standard-library ``ipaddress`` module.
     """
     # TODO: Part II
-    raise NotImplementedError
+
+    try:
+        prefix = ipaddress.IPv4Network(cidr, strict = False)
+    except:
+        raise ValueError
+    
+    return prefix.prefixlen
 
 
 def longest_prefix_match(prefixes: list[str], destination_ip: str) -> str | None:
@@ -135,4 +154,16 @@ def longest_prefix_match(prefixes: list[str], destination_ip: str) -> str | None
         You can use Python's standard-library ``ipaddress`` module.
     """
     # TODO: Part II
-    raise NotImplementedError
+    longest_prefix = None
+    longest_prefix_length = -1
+
+    for prefix in prefixes:
+        if prefix_contains(prefix, destination_ip):
+            if prefix_length(prefix) > longest_prefix_length:
+                longest_prefix = prefix
+                longest_prefix_length = prefix_length(prefix)
+
+    if longest_prefix:
+        return canonical_prefix(longest_prefix)
+    else:
+        return None
