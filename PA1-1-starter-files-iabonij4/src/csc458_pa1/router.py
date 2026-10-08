@@ -104,15 +104,19 @@ class Router:
         # TODO: Part II
         if prefix_length < 0 or prefix_length > 32:
             raise ValueError
+
+        route_prefix += '/'
+        route_prefix += str(prefix_length)
         try:
-            cidr = canonical_prefix(route_prefix, prefix_length)
+            cidr = canonical_prefix(route_prefix)
         except ValueError:
             raise ValueError
 
-        try: #https://docs.python.org/3/library/ipaddress.html
-            next_hop = str(ipaddress.IPv4Address(next_hop))
-        except Exception:
-            raise ValueError
+        if next_hop:
+            try: #https://docs.python.org/3/library/ipaddress.html
+                next_hop = str(ipaddress.IPv4Address(next_hop))
+            except Exception:
+                raise ValueError
 
         if interface_num < 0 or interface_num > len(self.interfaces):
             raise IndexError
@@ -179,11 +183,11 @@ class Router:
         
         while self._incoming:
             interface_num, datagram = self._incoming.popleft()
-            prefixes = longest_prefix_match(self._routes.keys(), datagram.dst)
+            prefixes = longest_prefix_match(list(self._routes.keys()), datagram.dst)
 
             if prefixes and datagram.ttl > 1:
                 #source: https://docs.python.org/3/library/dataclasses.html
-                new_datagram = replace(datagram, datagram.ttl - 1)
+                new_datagram = replace(datagram, ttl=datagram.ttl - 1)
                 hop = datagram.dst
                 if self._routes[prefixes].next_hop:
                     hop = self._routes[prefixes].next_hop
