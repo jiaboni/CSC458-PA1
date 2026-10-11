@@ -73,4 +73,121 @@ def analyze_traceroute_pcap(
         * stop when a Port Unreachable from the destination is observed.
     """
     # TODO: Part III (small PCAP-analysis task)
-    raise NotImplementedError
+    route = []
+
+    for i in range(max_ttl):
+        route.append([])
+
+    for record in read_pcap(path):
+        try:
+            etherframe = EthernetFrame.parse(record.data)
+        except PacketFormatError:
+            continue
+        
+        if etherframe.ethertype == ETHERTYPE_IPV4:
+            try:
+                ipv4_packet = IPv4Packet.parse(etherframe.payload)
+            except PacketFormatError:
+                continue
+        else:
+            continue
+
+        if ipv4_packet.protocol == IPPROTO_ICMP:
+            try:
+                icmp_message = ICMPMessage.parse(ipv4_packet.payload)
+            except PacketFormatError:
+                continue
+        else:
+            continue
+
+        if (icmp_message.type == 11 and icmp_message.code == 0) or (icmp_message.type == 3 and icmp_message.code == 3):
+            try:
+                quoted_ipv4 = IPv4Packet.parse(icmp_message.payload, require_full=False)
+            except PacketFormatError:
+                continue
+        
+            if quoted_ipv4.protocol == IPPROTO_UDP:
+                try:
+                    quoted_udp = UDPDatagram.parse(quoted_ipv4.payload, require_full=False)
+                except PacketFormatError:
+                    continue
+            else:
+                continue
+
+            if (
+                ipv4_packet.dst == source_ip
+                and quoted_ipv4.src == source_ip
+                and quoted_ipv4.dst == destination_ip
+            ):
+                ttl = quoted_udp.dst_port - base_port
+                if 0 <= ttl <= max_ttl:
+                    if ipv4_packet.src not in route[ttl - 1]:
+                        route[ttl - 1].append(ipv4_packet.src)
+                    if icmp_message.type == 3 and icmp_message.code == 3:
+                        break
+            else:
+                continue
+        # elif icmp_message.type == 3 and icmp_message.code == 3:
+        #     try:
+        #         quoted_ipv4 = IPv4Packet.parse(icmp_message.payload, require_full=False)
+        #     except PacketFormatError:
+        #         continue
+        
+        #     if quoted_ipv4.protocol == IPPROTO_UDP:
+        #         try:
+        #             quoted_udp = UDPDatagram.parse(quoted_ipv4.payload, require_full=False)
+        #         except PacketFormatError:
+        #             continue
+        #     else:
+        #         continue
+
+        #     if (
+        #         ipv4_packet.dst == source_ip
+        #         and quoted_ipv4.src == source_ip
+        #         and quoted_ipv4.dst == destination_ip
+        #     ):
+        #         ttl = quoted_udp.dst_port - base_port
+        #         if 0 <= ttl <= max_ttl:
+        #             if ipv4_packet.src not in route[ttl - 1]:
+        #                 route[ttl - 1].append(ipv4_packet.src)
+        #             break
+        #     else:
+        #         continue
+
+    for i in range(max_ttl, 1, -1):
+        if route[i - 1]:
+            break
+        else:
+            route.pop()
+
+    return route
+
+
+# capture = (Path(__file__).resolve().parents[2]
+#             / "pcaps"
+#             / "traceroute_basic.pcap"
+#         )
+
+# print(analyze_traceroute_pcap(
+#     capture, "192.0.2.10", "203.0.113.80", max_ttl=2))
+
+# capture = (Path(__file__).resolve().parents[2]
+#             / "pcaps"
+#             / "traceroute_integr"
+#             "ated.pcap"
+#         )
+# print(analyze_traceroute_pcap(
+#         capture,
+#         "192.0.2.10",
+#         "203.0.113.80",
+#     ))
+
+# capture = (Path(__file__).resolve().parents[2]
+#             / "pcaps"
+#             / "traceroute_messy.pcap"
+#         )
+# print(analyze_traceroute_pcap(
+#         capture,
+#         "192.0.2.10",
+#         "203.0.113.99",
+#     ))
