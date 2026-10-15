@@ -74,6 +74,7 @@ def analyze_traceroute_pcap(
     """
     # TODO: Part III (small PCAP-analysis task)
     route = []
+    final_ttl = max_ttl
 
     for i in range(max_ttl):
         route.append([])
@@ -124,14 +125,13 @@ def analyze_traceroute_pcap(
                     if ipv4_packet.src not in route[ttl - 1]:
                         route[ttl - 1].append(ipv4_packet.src)
                     if icmp_message.type == 3 and icmp_message.code == 3:
-                        break
+                        final_ttl = ttl
             else:
                 continue
         
-    for i in range(max_ttl, 1, -1):
-        if route[i - 1]:
-            break
-        else:
-            route.pop()
+    if not any(route):
+        return []
+    else: 
+        return route[:final_ttl]
 
-    return route
+
