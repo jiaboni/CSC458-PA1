@@ -56,6 +56,11 @@ All probes target Off-link (off-LAN) destination so routing resolve the next-hop
 
 10. Run the supplied PCAP analysis and record the reconstructed hop list for `traceroute_integrated.pcap`. Then identify which ICMP source corresponds to each TTL.
 
+TTL 1: "192.0.2.1"
+TTL 2: "198.51.100.1"
+TTL 3: "203.0.113.1"
+TTL 4: "203.0.113.80"
+
 11. `traceroute_messy.pcap` contains a missing hop. Give at least three realistic reasons why a traceroute hop may appear as `*` even though later routers respond.
 
 A traceroute hop may appear as `*` even though later routers respond because of NATs,
