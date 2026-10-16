@@ -1,7 +1,7 @@
 # CSC458 PA1 Report
 
-Name(s): Amaan Batla
-UTORid(s): batlaama
+Name(s): Amaan Batla, Joshua Iaboni
+UTORid(s): batlaama, iabonij4
 
 ## Part I - Network Interface and ARP
 
